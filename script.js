@@ -1,17 +1,96 @@
 // 文字カテゴリーの定義
-const characterCategories = {
-    kana: generateKanaCharacters(),
-    kanji1_2: generateKanji1_2Characters(),
-    kanji3_4: generateKanji3_4Characters(),
-    symbols: generateSymbolCharacters(),
-    surrogate: generateSurrogateCharacters(),
-    emoji: generateEmojiCharacters(),
-    ivs: generateIVSCharacters(),
-    compatibility: generateCompatibilityCharacters()
+const characterCategories = {};
+
+// キャッシュオブジェクト
+const cache = {
+    characters: new Map(),
+    fonts: null
 };
 
-// ひらがな・カタカナ・CJK記号の生成
-function generateKanaCharacters() {
+// ローディング状態の管理
+let isGenerating = false;
+
+// 文字カテゴリーの非同期生成
+async function generateCharacterCategory(category) {
+    if (cache.characters.has(category)) {
+        return cache.characters.get(category);
+    }
+
+    showLoading(true);
+    
+    try {
+        let characters;
+        switch (category) {
+            case 'kana':
+                characters = await generateKanaCharacters();
+                break;
+            case 'kanji1_2':
+                characters = await generateKanji1_2Characters();
+                break;
+            case 'kanji3_4':
+                characters = await generateKanji3_4Characters();
+                break;
+            case 'symbols':
+                characters = await generateSymbolCharacters();
+                break;
+            case 'surrogate':
+                characters = await generateSurrogateCharacters();
+                break;
+            case 'emoji':
+                characters = await generateEmojiCharacters();
+                break;
+            case 'ivs':
+                characters = await generateIVSCharacters();
+                break;
+            case 'compatibility':
+                characters = await generateCompatibilityCharacters();
+                break;
+            default:
+                throw new Error('不正なカテゴリー');
+        }
+        
+        cache.characters.set(category, characters);
+        return characters;
+    } catch (error) {
+        showError(`文字の生成中にエラーが発生しました: ${error.message}`);
+        return [];
+    } finally {
+        showLoading(false);
+    }
+}
+
+// エラー表示
+function showError(message) {
+    const grid = document.getElementById('characterGrid');
+    grid.innerHTML = `<div class="error-message">${message}</div>`;
+}
+
+// ローディング表示の制御
+function showLoading(show) {
+    const grid = document.getElementById('characterGrid');
+    if (show) {
+        grid.innerHTML = `
+            <div class="loading">
+                文字を生成中...
+                <div class="spinner"></div>
+                <div class="progress-bar">
+                    <div class="fill" style="width: 0%"></div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// プログレス表示の更新
+function updateProgress(percent) {
+    const progressBar = document.querySelector('.progress-bar .fill');
+    if (progressBar) {
+        progressBar.style.width = `${percent}%`;
+    }
+}
+
+// 基本文字の生成（ひらがな、カタカナ、CJK記号）
+async function generateKanaCharacters() {
     const ranges = [
         [0x3040, 0x309F], // ひらがな
         [0x30A0, 0x30FF], // カタカナ
@@ -21,8 +100,7 @@ function generateKanaCharacters() {
 }
 
 // 第1水準・第2水準漢字の生成
-function generateKanji1_2Characters() {
-    // JIS X 0208の範囲（CP932と重なる部分）
+async function generateKanji1_2Characters() {
     const ranges = [
         [0x4E00, 0x9FBF]  // 基本漢字の範囲
     ];
@@ -30,7 +108,7 @@ function generateKanji1_2Characters() {
 }
 
 // 第3水準・第4水準漢字の生成
-function generateKanji3_4Characters() {
+async function generateKanji3_4Characters() {
     const ranges = [
         [0x4E00, 0x9FFF],  // CJK統合漢字
         [0x3400, 0x4DBF],  // CJK統合漢字拡張A
@@ -40,7 +118,7 @@ function generateKanji3_4Characters() {
 }
 
 // CJK記号の生成
-function generateSymbolCharacters() {
+async function generateSymbolCharacters() {
     const ranges = [
         [0x3000, 0x303F],  // CJK記号と句読点
         [0x31F0, 0x31FF],  // かな拡張
@@ -52,8 +130,8 @@ function generateSymbolCharacters() {
     return generateCharactersFromRanges(ranges);
 }
 
-// サロゲートペア文字の生成（BMP外の漢字）
-function generateSurrogateCharacters() {
+// サロゲートペア文字の生成
+async function generateSurrogateCharacters() {
     const ranges = [
         [0x20000, 0x2A6DF],  // CJK統合漢字拡張B
         [0x2A700, 0x2B73F],  // CJK統合漢字拡張C
@@ -64,7 +142,7 @@ function generateSurrogateCharacters() {
 }
 
 // 絵文字の生成
-function generateEmojiCharacters() {
+async function generateEmojiCharacters() {
     const ranges = [
         [0x1F300, 0x1F64F],  // その他の記号と絵文字
         [0x1F680, 0x1F6FF],  // 輸送と地図の記号
@@ -75,73 +153,96 @@ function generateEmojiCharacters() {
 }
 
 // IVS文字の生成
-function generateIVSCharacters() {
+async function generateIVSCharacters() {
     const baseCharacters = getCommonKanji();
     const characters = [];
     
-    baseCharacters.forEach(base => {
+    for (const base of baseCharacters) {
         characters.push(base);
         // 異体字セレクタ (VS1-VS16: U+FE00-U+FE0F)
         for (let i = 0xFE00; i <= 0xFE0F; i++) {
             const variant = base + String.fromCodePoint(i);
-            if (isCharacterRenderable(variant)) {
+            if (await isCharacterRenderable(variant)) {
                 characters.push(variant);
             }
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
+        
         // 漢字異体字セレクタ (U+E0100-U+E01EF)
         for (let i = 0xE0100; i <= 0xE01EF; i++) {
             try {
                 const variant = base + String.fromCodePoint(i);
-                if (isCharacterRenderable(variant)) {
+                if (await isCharacterRenderable(variant)) {
                     characters.push(variant);
                 }
             } catch (e) {
                 continue;
             }
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-    });
+        
+        updateProgress((baseCharacters.indexOf(base) + 1) / baseCharacters.length * 100);
+    }
     
     return characters;
 }
 
 // 互換文字の生成
-function generateCompatibilityCharacters() {
+async function generateCompatibilityCharacters() {
     const ranges = [
         [0xF900, 0xFAFF]  // CJK互換漢字
     ];
     return generateCharactersFromRanges(ranges);
 }
 
-// 文字範囲から文字を生成（BMP内）
-function generateCharactersFromRanges(ranges, filterFn = null) {
+// 文字範囲から文字を生成
+async function generateCharactersFromRanges(ranges, filterFn = null) {
     const characters = [];
+    let processedCount = 0;
+    const totalCount = ranges.reduce((sum, [start, end]) => sum + (end - start + 1), 0);
+
     for (const [start, end] of ranges) {
         for (let i = start; i <= end; i++) {
             try {
                 const char = String.fromCodePoint(i);
-                if (isCharacterRenderable(char) && (!filterFn || filterFn(i))) {
+                if (await isCharacterRenderable(char) && (!filterFn || filterFn(i))) {
                     characters.push(char);
                 }
             } catch (e) {
                 continue;
+            }
+            
+            processedCount++;
+            if (processedCount % 100 === 0) {
+                updateProgress(processedCount / totalCount * 100);
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
     }
     return characters;
 }
 
-// サロゲートペア文字の生成（BMP外）
-function generateSurrogateCharactersFromRanges(ranges) {
+// サロゲートペア文字の生成
+async function generateSurrogateCharactersFromRanges(ranges) {
     const characters = [];
+    let processedCount = 0;
+    const totalCount = ranges.reduce((sum, [start, end]) => sum + (end - start + 1), 0);
+
     for (const [start, end] of ranges) {
         for (let i = start; i <= end; i++) {
             try {
                 const char = String.fromCodePoint(i);
-                if (isCharacterRenderable(char)) {
+                if (await isCharacterRenderable(char)) {
                     characters.push(char);
                 }
             } catch (e) {
                 continue;
+            }
+            
+            processedCount++;
+            if (processedCount % 100 === 0) {
+                updateProgress(processedCount / totalCount * 100);
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
     }
@@ -149,27 +250,27 @@ function generateSurrogateCharactersFromRanges(ranges) {
 }
 
 // 文字が描画可能かチェック
-function isCharacterRenderable(char) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.font = '16px sans-serif';
-    try {
-        const metrics = ctx.measureText(char);
-        return metrics.width > 0 && metrics.width < 100;
-    } catch (e) {
-        return false;
-    }
+async function isCharacterRenderable(char) {
+    return new Promise(resolve => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = '16px sans-serif';
+        try {
+            const metrics = ctx.measureText(char);
+            resolve(metrics.width > 0 && metrics.width < 100);
+        } catch (e) {
+            resolve(false);
+        }
+    });
 }
 
 // JIS X 0213の第1水準・第2水準漢字判定
 function isJISLevel1or2(codePoint) {
-    // JIS X 0208の範囲チェック（簡易版）
     return codePoint >= 0x4E00 && codePoint <= 0x9FBF;
 }
 
 // JIS X 0213の第3水準・第4水準漢字判定
 function isJISLevel3or4(codePoint) {
-    // 第1・第2水準以外の漢字をチェック
     return !isJISLevel1or2(codePoint);
 }
 
@@ -182,52 +283,130 @@ function getCommonKanji() {
     ];
 }
 
-// 文字の種類を判定
-function getCharacterType(char) {
-    const code = char.codePointAt(0);
+// 文字グリッドの更新
+async function updateCharacterGrid(category) {
+    const grid = document.getElementById('characterGrid');
     
-    // BMP内の文字
-    if (code <= 0xFFFF) {
-        if (code >= 0x3040 && code <= 0x309F) return 'ひらがな';
-        if (code >= 0x30A0 && code <= 0x30FF) return 'カタカナ';
-        if (code >= 0x3000 && code <= 0x303F) return 'CJK記号';
-        if (code >= 0x4E00 && code <= 0x9FFF) {
-            if (isJISLevel1or2(code)) return '第1・第2水準漢字';
-            return '第3・第4水準漢字';
+    if (isGenerating) {
+        return;
+    }
+    
+    isGenerating = true;
+    try {
+        const chars = await generateCharacterCategory(category);
+        
+        grid.innerHTML = '';
+        if (chars && chars.length > 0) {
+            const fragment = document.createDocumentFragment();
+            chars.forEach(char => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.title = `Unicode: ${[...char].map(c => 
+                    'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
+                ).join(' ')}`;
+                span.addEventListener('click', () => showCharacterDetail(char));
+                fragment.appendChild(span);
+            });
+            
+            grid.appendChild(fragment);
+            document.getElementById('charCount').textContent = `${chars.length}文字`;
+        } else {
+            grid.innerHTML = '<div class="no-chars">表示可能な文字がありません</div>';
         }
-        if (code >= 0x3400 && code <= 0x4DBF) return 'CJK統合漢字拡張A';
-        if (code >= 0xF900 && code <= 0xFAFF) return 'CJK互換漢字';
-        if (code >= 0xFE00 && code <= 0xFE0F) return '異体字セレクタ';
+    } catch (error) {
+        showError(`文字の表示中にエラーが発生しました: ${error.message}`);
+    } finally {
+        isGenerating = false;
     }
-    // サロゲートペア文字
-    else {
-        if (code >= 0x20000 && code <= 0x2A6DF) return 'CJK統合漢字拡張B';
-        if (code >= 0x2A700 && code <= 0x2B73F) return 'CJK統合漢字拡張C';
-        if (code >= 0x2B740 && code <= 0x2B81F) return 'CJK統合漢字拡張D';
-        if (code >= 0x2B820 && code <= 0x2CEAF) return 'CJK統合漢字拡張E';
-        if (code >= 0x1F300 && code <= 0x1F9FF) return '絵文字';
-    }
-    
-    return '不明';
 }
 
-// JIS区点コードを取得
-function getJISCode(char) {
-    const code = char.codePointAt(0);
-    
-    // JIS X 0208の範囲内かチェック
-    if (code >= 0x4E00 && code <= 0x9FBF) {
-        // 簡易的な変換（完全な実装ではありません）
-        const ku = Math.floor((code - 0x4E00) / 94) + 16;
-        const ten = ((code - 0x4E00) % 94) + 1;
-        return `${ku}-${ten}`;
-    }
-    
-    return '非JIS漢字';
+// イベントリスナーの設定
+function setupEventListeners() {
+    // カテゴリーボタン
+    document.querySelectorAll('.character-categories button').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            if (isGenerating) return;
+            
+            const buttons = document.querySelectorAll('.character-categories button');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.disabled = true;
+            });
+            
+            e.target.classList.add('active');
+            
+            try {
+                await updateCharacterGrid(e.target.dataset.category);
+            } finally {
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        });
+    });
+
+    // フォント選択
+    document.getElementById('fontSelect').addEventListener('change', (e) => {
+        updateFontFamily(e.target.value);
+        document.getElementById('currentFont').textContent = e.target.value;
+    });
+
+    // 文字詳細を閉じるボタン
+    document.querySelector('.close-button').addEventListener('click', () => {
+        document.getElementById('characterDetail').classList.remove('show');
+    });
+
+    // ESCキーで文字詳細を閉じる
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('characterDetail').classList.remove('show');
+        }
+    });
+
+    // フォントサイズ制御
+    const sizeSlider = document.getElementById('fontSize');
+    const sizeValue = document.getElementById('fontSizeValue');
+    sizeSlider.addEventListener('input', (e) => {
+        const size = e.target.value;
+        sizeValue.textContent = `${size}px`;
+        document.getElementById('characterGrid').style.fontSize = `${size}px`;
+    });
 }
+
+// 初期化
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const fontSelect = document.getElementById('fontSelect');
+        const fonts = await getSystemFonts();
+
+        fonts.forEach(font => {
+            const option = document.createElement('option');
+            option.value = font;
+            option.textContent = font;
+            option.style.fontFamily = font;
+            fontSelect.appendChild(option);
+        });
+
+        if (fonts.length > 0) {
+            updateFontFamily(fonts[0]);
+        }
+
+        setupEventListeners();
+
+        // 初期カテゴリーを選択
+        const defaultButton = document.querySelector('[data-category="kana"]');
+        if (defaultButton) {
+            defaultButton.click();
+        }
+    } catch (error) {
+        showError(`初期化中にエラーが発生しました: ${error.message}`);
+    }
+});
 
 // システムフォントの取得
 async function getSystemFonts() {
+    if (cache.fonts) {
+        return cache.fonts;
+    }
+
     const availableFonts = new Set();
 
     if ('queryLocalFonts' in window) {
@@ -242,7 +421,9 @@ async function getSystemFonts() {
         checkCommonFonts(availableFonts);
     }
 
-    return Array.from(availableFonts).sort();
+    const sortedFonts = Array.from(availableFonts).sort();
+    cache.fonts = sortedFonts;
+    return sortedFonts;
 }
 
 // 一般的なフォントの存在チェック
@@ -282,30 +463,45 @@ function showCharacterDetail(char) {
     jisCode.textContent = getJISCode(char);
 
     detail.classList.add('show');
-    document.body.style.overflow = 'hidden';
 }
 
-// 文字グリッドの更新
-function updateCharacterGrid(category) {
-    const grid = document.getElementById('characterGrid');
-    const chars = characterCategories[category];
+// 文字の種類を判定
+function getCharacterType(char) {
+    const code = char.codePointAt(0);
     
-    grid.innerHTML = '';
-    if (chars && chars.length > 0) {
-        chars.forEach(char => {
-            const span = document.createElement('span');
-            span.textContent = char;
-            span.title = `Unicode: ${[...char].map(c => 
-                'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
-            ).join(' ')}`;
-            span.addEventListener('click', () => showCharacterDetail(char));
-            grid.appendChild(span);
-        });
-        
-        document.getElementById('charCount').textContent = `${chars.length}文字`;
+    if (code <= 0xFFFF) {
+        if (code >= 0x3040 && code <= 0x309F) return 'ひらがな';
+        if (code >= 0x30A0 && code <= 0x30FF) return 'カタカナ';
+        if (code >= 0x3000 && code <= 0x303F) return 'CJK記号';
+        if (code >= 0x4E00 && code <= 0x9FFF) {
+            if (isJISLevel1or2(code)) return '第1・第2水準漢字';
+            return '第3・第4水準漢字';
+        }
+        if (code >= 0x3400 && code <= 0x4DBF) return 'CJK統合漢字拡張A';
+        if (code >= 0xF900 && code <= 0xFAFF) return 'CJK互換漢字';
+        if (code >= 0xFE00 && code <= 0xFE0F) return '異体字セレクタ';
     } else {
-        grid.innerHTML = '<div class="no-chars">表示可能な文字がありません</div>';
+        if (code >= 0x20000 && code <= 0x2A6DF) return 'CJK統合漢字拡張B';
+        if (code >= 0x2A700 && code <= 0x2B73F) return 'CJK統合漢字拡張C';
+        if (code >= 0x2B740 && code <= 0x2B81F) return 'CJK統合漢字拡張D';
+        if (code >= 0x2B820 && code <= 0x2CEAF) return 'CJK統合漢字拡張E';
+        if (code >= 0x1F300 && code <= 0x1F9FF) return '絵文字';
     }
+    
+    return '不明';
+}
+
+// JIS区点コードを取得
+function getJISCode(char) {
+    const code = char.codePointAt(0);
+    
+    if (code >= 0x4E00 && code <= 0x9FBF) {
+        const ku = Math.floor((code - 0x4E00) / 94) + 16;
+        const ten = ((code - 0x4E00) % 94) + 1;
+        return `${ku}-${ten}`;
+    }
+    
+    return '非JIS漢字';
 }
 
 // フォントファミリーの更新
@@ -320,71 +516,3 @@ function updateFontFamily(fontFamily) {
     }
     document.getElementById('currentFont').textContent = fontFamily;
 }
-
-// イベントリスナーの設定
-function setupEventListeners() {
-    // カテゴリーボタン
-    document.querySelectorAll('.character-categories button').forEach(button => {
-        button.addEventListener('click', (e) => {
-            document.querySelectorAll('.character-categories button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            e.target.classList.add('active');
-            updateCharacterGrid(e.target.dataset.category);
-        });
-    });
-
-    // フォント選択
-    document.getElementById('fontSelect').addEventListener('change', (e) => {
-        updateFontFamily(e.target.value);
-    });
-
-    // 文字詳細を閉じる
-    document.querySelector('.close-button').addEventListener('click', () => {
-        document.getElementById('characterDetail').classList.remove('show');
-        document.body.style.overflow = '';
-    });
-
-    // ESCキーで閉じる
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.getElementById('characterDetail').classList.remove('show');
-            document.body.style.overflow = '';
-        }
-    });
-
-    // フォントサイズ制御
-    const sizeSlider = document.getElementById('fontSize');
-    const sizeValue = document.getElementById('fontSizeValue');
-    sizeSlider.addEventListener('input', (e) => {
-        const size = e.target.value;
-        sizeValue.textContent = `${size}px`;
-        document.getElementById('characterGrid').style.fontSize = `${size}px`;
-    });
-}
-
-// 初期化
-document.addEventListener('DOMContentLoaded', async () => {
-    const fontSelect = document.getElementById('fontSelect');
-    const fonts = await getSystemFonts();
-
-    fonts.forEach(font => {
-        const option = document.createElement('option');
-        option.value = font;
-        option.textContent = font;
-        option.style.fontFamily = font;
-        fontSelect.appendChild(option);
-    });
-
-    if (fonts.length > 0) {
-        updateFontFamily(fonts[0]);
-    }
-
-    setupEventListeners();
-
-    // 初期カテゴリーを選択
-    const defaultButton = document.querySelector('[data-category="kana"]');
-    if (defaultButton) {
-        defaultButton.click();
-    }
-});
