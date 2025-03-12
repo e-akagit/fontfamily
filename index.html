@@ -2,32 +2,37 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>フォントビューア</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Viewer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <div class="control-panel">
+        <div class="left-panel">
             <div class="font-selector">
                 <label for="fontSelect">フォント選択：</label>
                 <select id="fontSelect"></select>
             </div>
             <div class="character-categories">
-                <h3>文字カテゴリー</h3>
-                <button data-category="basic">基本系</button>
-                <button data-category="geometric">多面体</button>
-                <button data-category="usage">使用領域</button>
+                <button data-category="basic">基本文字</button>
+                <button data-category="geometric">記号・図形</button>
+                <button data-category="private">私用領域</button>
                 <button data-category="surrogate">サロゲートペア</button>
                 <button data-category="ivs">IVS文字</button>
             </div>
         </div>
-        <div class="preview-area" id="previewArea">
+        <div class="right-panel">
+            <div class="controls">
+                <div class="size-control">
+                    <label for="fontSize">文字サイズ：</label>
+                    <input type="range" id="fontSize" min="12" max="72" value="24">
+                    <span id="fontSizeValue">24px</span>
+                </div>
+            </div>
             <div id="characterGrid" class="character-grid"></div>
             <div id="sampleText" class="sample-text">
-                <h3>サンプルテキスト</h3>
-                <p>あのイーハトーヴォのすきとおった風、夏でも底に冷たさをもつ青いそら、うつくしい森で飾られたモリーオ市、郊外のぎらぎらひかる草の波。</p>
+                <p>あのイーハトーヴォのすきとおった風、夏でも底に冷たさをもつ青いそら</p>
                 <p>The quick brown fox jumps over the lazy dog.</p>
-                <p>1234567890</p>
             </div>
         </div>
     </div>

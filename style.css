@@ -5,7 +5,9 @@
 }
 
 body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     padding: 20px;
+    background: #f5f5f5;
 }
 
 .container {
@@ -13,12 +15,17 @@ body {
     gap: 20px;
     max-width: 1200px;
     margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.control-panel {
+/* 左パネル */
+.left-panel {
     width: 250px;
     padding: 20px;
-    background: #f5f5f5;
+    background: #f8f9fa;
     border-radius: 8px;
 }
 
@@ -26,12 +33,17 @@ body {
     margin-bottom: 20px;
 }
 
+.font-selector label {
+    display: block;
+    margin-bottom: 8px;
+}
+
 #fontSelect {
     width: 100%;
     padding: 8px;
-    margin-top: 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    font-size: 14px;
 }
 
 .character-categories {
@@ -41,16 +53,17 @@ body {
 }
 
 .character-categories button {
-    padding: 8px 12px;
-    background: #fff;
+    padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    background: white;
     cursor: pointer;
-    transition: background-color 0.2s;
+    text-align: left;
+    transition: all 0.2s;
 }
 
 .character-categories button:hover {
-    background: #eee;
+    background: #f0f0f0;
 }
 
 .character-categories button.active {
@@ -59,23 +72,41 @@ body {
     border-color: #0056b3;
 }
 
-.preview-area {
+/* 右パネル */
+.right-panel {
     flex: 1;
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
+.controls {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.size-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#fontSize {
+    width: 150px;
+}
+
+/* 文字グリッド */
 .character-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
     gap: 10px;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #f9f9f9;
+    padding: 20px;
+    background: #f8f9fa;
     border-radius: 4px;
-    min-height: 200px;
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .character-grid span {
@@ -84,7 +115,7 @@ body {
     justify-content: center;
     height: 40px;
     background: white;
-    border: 1px solid #eee;
+    border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
@@ -95,14 +126,11 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* サンプルテキスト */
 .sample-text {
-    padding: 15px;
-    background: #f9f9f9;
+    padding: 20px;
+    background: #f8f9fa;
     border-radius: 4px;
-}
-
-.sample-text h3 {
-    margin-bottom: 10px;
 }
 
 .sample-text p {
@@ -110,7 +138,13 @@ body {
     line-height: 1.6;
 }
 
-/* フォントプレビュー用のスタイル */
-.preview-font {
-    font-family: inherit;
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .left-panel {
+        width: 100%;
+    }
 }
