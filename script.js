@@ -1,146 +1,137 @@
 // 文字カテゴリーの定義
 const characterCategories = {
-    basic: generateBasicCharacters(),
-    geometric: generateGeometricCharacters(),
-    private: generatePrivateUseCharacters(),
+    kana: generateKanaCharacters(),
+    kanji1_2: generateKanji1_2Characters(),
+    kanji3_4: generateKanji3_4Characters(),
+    symbols: generateSymbolCharacters(),
     surrogate: generateSurrogateCharacters(),
-    ivs: generateIVSCharacters()
+    emoji: generateEmojiCharacters(),
+    ivs: generateIVSCharacters(),
+    compatibility: generateCompatibilityCharacters()
 };
 
-// 基本文字の生成
-function generateBasicCharacters() {
-    const characters = [];
-    
-    // ひらがな（U+3041 ～ U+3096）
-    for (let i = 0x3041; i <= 0x3096; i++) {
-        characters.push(String.fromCodePoint(i));
-    }
-    
-    // カタカナ（U+30A1 ～ U+30FA）
-    for (let i = 0x30A1; i <= 0x30FA; i++) {
-        characters.push(String.fromCodePoint(i));
-    }
-
-    // 漢字（教育漢字）
-    const kanjiRanges = [
-        [0x4E00, 0x4E80],  // 一画～二画
-        [0x4E8C, 0x4EE4],  // 二画～三画
-        [0x4F00, 0x4F60],  // 四画
-        [0x5000, 0x502D],  // 五画
-        [0x5100, 0x513F],  // 六画
-        [0x5200, 0x524D],  // 七画
-        [0x5300, 0x5351],  // 八画
-        [0x5400, 0x5438],  // 九画
-        [0x5500, 0x5553]   // 十画
+// ひらがな・カタカナ・CJK記号の生成
+function generateKanaCharacters() {
+    const ranges = [
+        [0x3040, 0x309F], // ひらがな
+        [0x30A0, 0x30FF], // カタカナ
+        [0x3000, 0x303F]  // CJK記号
     ];
-
-    kanjiRanges.forEach(([start, end]) => {
-        for (let i = start; i <= end; i++) {
-            characters.push(String.fromCodePoint(i));
-        }
-    });
-
-    return characters;
+    return generateCharactersFromRanges(ranges);
 }
 
-// 記号・図形の生成
-function generateGeometricCharacters() {
-    const geometricRanges = [
-        [0x25A0, 0x25FF],  // 幾何学模様
-        [0x2600, 0x26FF],  // その他の記号
-        [0x2700, 0x27BF],  // 装飾記号
-        [0x2800, 0x28FF],  // 点字パターン
-        [0x2900, 0x297F],  // 追加の矢印
-        [0x2B00, 0x2BFF]   // その他の記号と矢印
+// 第1水準・第2水準漢字の生成
+function generateKanji1_2Characters() {
+    // JIS X 0208の範囲（CP932と重なる部分）
+    const ranges = [
+        [0x4E00, 0x9FBF]  // 基本漢字の範囲
     ];
-
-    return generateCharactersFromRanges(geometricRanges);
+    return generateCharactersFromRanges(ranges, isJISLevel1or2);
 }
 
-// 私用領域の文字生成
-function generatePrivateUseCharacters() {
-    return generateCharactersFromRanges([[0xE000, 0xF8FF]]);
+// 第3水準・第4水準漢字の生成
+function generateKanji3_4Characters() {
+    const ranges = [
+        [0x4E00, 0x9FFF],  // CJK統合漢字
+        [0x3400, 0x4DBF],  // CJK統合漢字拡張A
+        [0xF900, 0xFAFF]   // CJK互換漢字
+    ];
+    return generateCharactersFromRanges(ranges, isJISLevel3or4);
 }
 
-// サロゲートペア文字の生成
+// CJK記号の生成
+function generateSymbolCharacters() {
+    const ranges = [
+        [0x3000, 0x303F],  // CJK記号と句読点
+        [0x31F0, 0x31FF],  // かな拡張
+        [0x3200, 0x32FF],  // 囲みCJK文字
+        [0x3300, 0x33FF],  // CJK互換文字
+        [0x2E80, 0x2EFF],  // CJK部首補助
+        [0x2F00, 0x2FDF]   // 康熙部首
+    ];
+    return generateCharactersFromRanges(ranges);
+}
+
+// サロゲートペア文字の生成（BMP外の漢字）
 function generateSurrogateCharacters() {
-    const characters = [];
-    
-    // 基本の絵文字範囲
-    const emojiRanges = [
-        [0x1F300, 0x1F320],  // 自然
-        [0x1F330, 0x1F335],  // 植物
-        [0x1F400, 0x1F43F],  // 動物
-        [0x1F600, 0x1F64F],  // 感情
-        [0x1F680, 0x1F6FF],  // 輸送と地図
-        [0x1F900, 0x1F9FF]   // 補助的な記号と絵文字
+    const ranges = [
+        [0x20000, 0x2A6DF],  // CJK統合漢字拡張B
+        [0x2A700, 0x2B73F],  // CJK統合漢字拡張C
+        [0x2B740, 0x2B81F],  // CJK統合漢字拡張D
+        [0x2B820, 0x2CEAF]   // CJK統合漢字拡張E
     ];
+    return generateSurrogateCharactersFromRanges(ranges);
+}
 
-    // 基本の絵文字を追加
-    characters.push(...generateCharactersFromRanges(emojiRanges));
-
-    // 合成絵文字の追加
-    const zwj = String.fromCodePoint(0x200D);
-    const vs16 = String.fromCodePoint(0xFE0F);
-
-    // 職業絵文字
-    const professions = [
-        ["👨", "💻"], ["👩", "💻"],  // 技術者
-        ["👨", "🍳"], ["👩", "🍳"],  // シェフ
-        ["👨", "🏫"], ["👩", "🏫"],  // 教師
-        ["👨", "⚕️"], ["👩", "⚕️"]   // 医師
+// 絵文字の生成
+function generateEmojiCharacters() {
+    const ranges = [
+        [0x1F300, 0x1F64F],  // その他の記号と絵文字
+        [0x1F680, 0x1F6FF],  // 輸送と地図の記号
+        [0x1F900, 0x1F9FF],  // 補助的な記号と絵文字
+        [0x1FA70, 0x1FAFF]   // 絵文字拡張
     ];
-
-    // 家族絵文字
-    const families = [
-        ["👨", "👩", "👦"],
-        ["👨", "👩", "👧"],
-        ["👨", "👩", "👧", "👦"],
-        ["👩", "👩", "👦"],
-        ["👨", "👨", "👧"]
-    ];
-
-    // 職業絵文字の生成
-    professions.forEach(([person, item]) => {
-        characters.push(person + zwj + item);
-    });
-
-    // 家族絵文字の生成
-    families.forEach(members => {
-        characters.push(members.join(zwj));
-    });
-
-    return characters;
+    return generateSurrogateCharactersFromRanges(ranges);
 }
 
 // IVS文字の生成
 function generateIVSCharacters() {
-    const baseCharacters = [
-        '葛', '芦', '茨', '悪', '惡', '虫', '蝶', '鳥', '魚', '馬',
-        '龍', '韋', '諸', '飯', '飼', '館', '鶴', '麻', '鮎', '鯰'
-    ];
+    const baseCharacters = getCommonKanji();
     const characters = [];
-
+    
     baseCharacters.forEach(base => {
         characters.push(base);
-        // IVSセレクタ（E0100-E01EF）を使用
-        for (let i = 0xE0100; i <= 0xE012F; i++) {
+        // 異体字セレクタ (VS1-VS16: U+FE00-U+FE0F)
+        for (let i = 0xFE00; i <= 0xFE0F; i++) {
+            const variant = base + String.fromCodePoint(i);
+            if (isCharacterRenderable(variant)) {
+                characters.push(variant);
+            }
+        }
+        // 漢字異体字セレクタ (U+E0100-U+E01EF)
+        for (let i = 0xE0100; i <= 0xE01EF; i++) {
             try {
-                const combined = base + String.fromCodePoint(i);
-                if (isCharacterRenderable(combined)) {
-                    characters.push(combined);
+                const variant = base + String.fromCodePoint(i);
+                if (isCharacterRenderable(variant)) {
+                    characters.push(variant);
                 }
             } catch (e) {
                 continue;
             }
         }
     });
-
+    
     return characters;
 }
 
-// 文字範囲から文字を生成
-function generateCharactersFromRanges(ranges) {
+// 互換文字の生成
+function generateCompatibilityCharacters() {
+    const ranges = [
+        [0xF900, 0xFAFF]  // CJK互換漢字
+    ];
+    return generateCharactersFromRanges(ranges);
+}
+
+// 文字範囲から文字を生成（BMP内）
+function generateCharactersFromRanges(ranges, filterFn = null) {
+    const characters = [];
+    for (const [start, end] of ranges) {
+        for (let i = start; i <= end; i++) {
+            try {
+                const char = String.fromCodePoint(i);
+                if (isCharacterRenderable(char) && (!filterFn || filterFn(i))) {
+                    characters.push(char);
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+    }
+    return characters;
+}
+
+// サロゲートペア文字の生成（BMP外）
+function generateSurrogateCharactersFromRanges(ranges) {
     const characters = [];
     for (const [start, end] of ranges) {
         for (let i = start; i <= end; i++) {
@@ -170,7 +161,72 @@ function isCharacterRenderable(char) {
     }
 }
 
-// システムフォントの列挙
+// JIS X 0213の第1水準・第2水準漢字判定
+function isJISLevel1or2(codePoint) {
+    // JIS X 0208の範囲チェック（簡易版）
+    return codePoint >= 0x4E00 && codePoint <= 0x9FBF;
+}
+
+// JIS X 0213の第3水準・第4水準漢字判定
+function isJISLevel3or4(codePoint) {
+    // 第1・第2水準以外の漢字をチェック
+    return !isJISLevel1or2(codePoint);
+}
+
+// 常用漢字の取得（IVS用）
+function getCommonKanji() {
+    return [
+        '葛', '芦', '茨', '悪', '惡', '虫', '蝶', '鳥', '魚', '馬',
+        '龍', '韋', '諸', '飯', '飼', '館', '鶴', '麻', '鮎', '鯰',
+        '德', '齊', '戶', '步', '海', '淵', '漢', '瀨', '煮', '社'
+    ];
+}
+
+// 文字の種類を判定
+function getCharacterType(char) {
+    const code = char.codePointAt(0);
+    
+    // BMP内の文字
+    if (code <= 0xFFFF) {
+        if (code >= 0x3040 && code <= 0x309F) return 'ひらがな';
+        if (code >= 0x30A0 && code <= 0x30FF) return 'カタカナ';
+        if (code >= 0x3000 && code <= 0x303F) return 'CJK記号';
+        if (code >= 0x4E00 && code <= 0x9FFF) {
+            if (isJISLevel1or2(code)) return '第1・第2水準漢字';
+            return '第3・第4水準漢字';
+        }
+        if (code >= 0x3400 && code <= 0x4DBF) return 'CJK統合漢字拡張A';
+        if (code >= 0xF900 && code <= 0xFAFF) return 'CJK互換漢字';
+        if (code >= 0xFE00 && code <= 0xFE0F) return '異体字セレクタ';
+    }
+    // サロゲートペア文字
+    else {
+        if (code >= 0x20000 && code <= 0x2A6DF) return 'CJK統合漢字拡張B';
+        if (code >= 0x2A700 && code <= 0x2B73F) return 'CJK統合漢字拡張C';
+        if (code >= 0x2B740 && code <= 0x2B81F) return 'CJK統合漢字拡張D';
+        if (code >= 0x2B820 && code <= 0x2CEAF) return 'CJK統合漢字拡張E';
+        if (code >= 0x1F300 && code <= 0x1F9FF) return '絵文字';
+    }
+    
+    return '不明';
+}
+
+// JIS区点コードを取得
+function getJISCode(char) {
+    const code = char.codePointAt(0);
+    
+    // JIS X 0208の範囲内かチェック
+    if (code >= 0x4E00 && code <= 0x9FBF) {
+        // 簡易的な変換（完全な実装ではありません）
+        const ku = Math.floor((code - 0x4E00) / 94) + 16;
+        const ten = ((code - 0x4E00) % 94) + 1;
+        return `${ku}-${ten}`;
+    }
+    
+    return '非JIS漢字';
+}
+
+// システムフォントの取得
 async function getSystemFonts() {
     const availableFonts = new Set();
 
@@ -211,66 +267,63 @@ function showCharacterDetail(char) {
     const unicode = detail.querySelector('.unicode');
     const charType = detail.querySelector('.char-type');
     const byteLength = detail.querySelector('.byte-length');
+    const jisCode = detail.querySelector('.jis-code');
 
-    // プレビュー
     preview.textContent = char;
     preview.style.fontFamily = document.getElementById('fontSelect').value;
 
-    // Unicode情報
     const codePoints = [...char].map(c => {
         const hex = c.codePointAt(0).toString(16).toUpperCase();
         return `U+${hex.padStart(4, '0')}`;
     });
-    unicode.textContent = `Unicode: ${codePoints.join(' ')}`;
+    unicode.textContent = codePoints.join(' ');
+    charType.textContent = getCharacterType(char);
+    byteLength.textContent = new TextEncoder().encode(char).length;
+    jisCode.textContent = getJISCode(char);
 
-    // 文字種類
-    charType.textContent = `種類: ${getCharacterType(char)}`;
-
-    // バイト長
-    const bytes = new TextEncoder().encode(char);
-    byteLength.textContent = `バイト数: ${bytes.length}`;
-
-    // 表示
     detail.classList.add('show');
+    document.body.style.overflow = 'hidden';
 }
 
-// 文字の種類を判定
-function getCharacterType(char) {
-    const code = char.codePointAt(0);
-    if (code >= 0x3040 && code <= 0x309F) return 'ひらがな';
-    if (code >= 0x30A0 && code <= 0x30FF) return 'カタカナ';
-    if (code >= 0x4E00 && code <= 0x9FFF) return '漢字';
-    if (code >= 0x1F300 && code <= 0x1F9FF) return '絵文字';
-    if (code >= 0xE000 && code <= 0xF8FF) return '私用領域';
-    return '記号';
-}
-
-// UI更新関連の関数
-function updateFontFamily(fontFamily) {
-    const grid = document.getElementById('characterGrid');
-    const sampleText = document.getElementById('sampleText');
-    const styleValue = `"${fontFamily}", sans-serif`;
-    
-    grid.style.fontFamily = styleValue;
-    sampleText.style.fontFamily = styleValue;
-}
-
+// 文字グリッドの更新
 function updateCharacterGrid(category) {
     const grid = document.getElementById('characterGrid');
     const chars = characterCategories[category];
     
     grid.innerHTML = '';
-    chars.forEach(char => {
-        const span = document.createElement('span');
-        span.textContent = char;
-        span.addEventListener('click', () => showCharacterDetail(char));
-        grid.appendChild(span);
-    });
+    if (chars && chars.length > 0) {
+        chars.forEach(char => {
+            const span = document.createElement('span');
+            span.textContent = char;
+            span.title = `Unicode: ${[...char].map(c => 
+                'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
+            ).join(' ')}`;
+            span.addEventListener('click', () => showCharacterDetail(char));
+            grid.appendChild(span);
+        });
+        
+        document.getElementById('charCount').textContent = `${chars.length}文字`;
+    } else {
+        grid.innerHTML = '<div class="no-chars">表示可能な文字がありません</div>';
+    }
+}
+
+// フォントファミリーの更新
+function updateFontFamily(fontFamily) {
+    const grid = document.getElementById('characterGrid');
+    const preview = document.querySelector('.char-preview');
+    const styleValue = `"${fontFamily}", sans-serif`;
+    
+    grid.style.fontFamily = styleValue;
+    if (preview) {
+        preview.style.fontFamily = styleValue;
+    }
+    document.getElementById('currentFont').textContent = fontFamily;
 }
 
 // イベントリスナーの設定
 function setupEventListeners() {
-    // カテゴリーボタンのイベント
+    // カテゴリーボタン
     document.querySelectorAll('.character-categories button').forEach(button => {
         button.addEventListener('click', (e) => {
             document.querySelectorAll('.character-categories button').forEach(btn => {
@@ -281,14 +334,23 @@ function setupEventListeners() {
         });
     });
 
-    // フォント選択のイベント
+    // フォント選択
     document.getElementById('fontSelect').addEventListener('change', (e) => {
         updateFontFamily(e.target.value);
     });
 
-    // 文字詳細を閉じるボタン
+    // 文字詳細を閉じる
     document.querySelector('.close-button').addEventListener('click', () => {
         document.getElementById('characterDetail').classList.remove('show');
+        document.body.style.overflow = '';
+    });
+
+    // ESCキーで閉じる
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('characterDetail').classList.remove('show');
+            document.body.style.overflow = '';
+        }
     });
 
     // フォントサイズ制御
@@ -321,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
 
     // 初期カテゴリーを選択
-    const defaultButton = document.querySelector('[data-category="basic"]');
+    const defaultButton = document.querySelector('[data-category="kana"]');
     if (defaultButton) {
         defaultButton.click();
     }

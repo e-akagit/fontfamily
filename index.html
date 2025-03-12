@@ -14,11 +14,42 @@
                 <select id="fontSelect"></select>
             </div>
             <div class="character-categories">
-                <button data-category="basic">基本文字</button>
-                <button data-category="geometric">記号・図形</button>
-                <button data-category="private">私用領域</button>
-                <button data-category="surrogate">サロゲートペア</button>
-                <button data-category="ivs">IVS文字</button>
+                <button data-category="kana">
+                    ひらがな・カタカナ
+                    <small>U+3040～U+30FF</small>
+                </button>
+                <button data-category="kanji1_2">
+                    第1・第2水準漢字
+                    <small>JIS X 0208漢字</small>
+                </button>
+                <button data-category="kanji3_4">
+                    第3・第4水準漢字
+                    <small>拡張A・互換漢字含む</small>
+                </button>
+                <button data-category="symbols">
+                    CJK記号
+                    <small>U+3000～U+33FF他</small>
+                </button>
+                <button data-category="surrogate">
+                    サロゲートペア漢字
+                    <small>拡張B～E</small>
+                </button>
+                <button data-category="emoji">
+                    絵文字
+                    <small>U+1F300～U+1F9FF他</small>
+                </button>
+                <button data-category="ivs">
+                    IVS文字
+                    <small>異体字セレクタ</small>
+                </button>
+                <button data-category="compatibility">
+                    互換文字
+                    <small>U+F900～U+FAFF</small>
+                </button>
+            </div>
+            <div class="font-info">
+                <p>選択フォント: <span id="currentFont">-</span></p>
+                <p>文字数: <span id="charCount">-</span></p>
             </div>
         </div>
         <div class="right-panel">
@@ -30,10 +61,6 @@
                 </div>
             </div>
             <div id="characterGrid" class="character-grid"></div>
-            <div id="sampleText" class="sample-text">
-                <p>あのイーハトーヴォのすきとおった風、夏でも底に冷たさをもつ青いそら</p>
-                <p>The quick brown fox jumps over the lazy dog.</p>
-            </div>
         </div>
     </div>
 
@@ -46,9 +73,10 @@
         <div class="detail-content">
             <div class="char-preview"></div>
             <div class="char-info">
-                <p class="unicode"></p>
-                <p class="char-type"></p>
-                <p class="byte-length"></p>
+                <p>Unicode: <span class="unicode"></span></p>
+                <p>種類: <span class="char-type"></span></p>
+                <p>バイト数: <span class="byte-length"></span></p>
+                <p>JIS区点: <span class="jis-code"></span></p>
             </div>
         </div>
     </div>
